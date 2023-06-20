@@ -1,6 +1,3 @@
-section .data
-    intNumber db 7 ; db means define bytes
-
 section .bss
     ; reserving 3 bytes for digit + newline + null terminator
     strNumber resb 3
@@ -9,8 +6,16 @@ section .text
     global _start
 
 _start:
-    ; Convert integer to string
-    mov al, [intNumber] ; al register has 8 bits
+
+random:
+    ; read TSC into EDX:EAX
+    rdtsc
+
+    and eax, 0x0F ; keep lower 4 bits to get number in range 0-15
+    cmp al, 10 ; check if number is in range 10-15
+    jge random ; if num >=10, try again
+
+    ; convert integer to string
     add al, '0' ; add char '0' to int to get ASCII value of the number
     mov [strNumber], al
     mov byte [strNumber+1], 10 ; 10 is ASCII for newline
@@ -21,7 +26,7 @@ _start:
     mov ebx, 1 ; 1 is the file descriptor for stdout
     mov ecx, strNumber ; ecx stores a pointer to the data to write
     mov edx, 2 ; 2 is the number of bytes to write
-    int 0x80 ; triggers interrupt
+    int 0x80 ; make syscall
 
     ; sys_exit
     mov eax, 1 ; 1 is the number for sys_exit system call
