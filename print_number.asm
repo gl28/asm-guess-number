@@ -1,10 +1,11 @@
 section .data
-    prompt db "I just picked a number from 0-9. Enter your guess here: "
+    prompt db "I just picked a number from 0-9. Enter your guess here: ", 0
     prompt_len equ $ - prompt
-    correctMessage db "Correct!"
+    correctMessage db "Correct!", 10, 0
     correctMessage_len equ $ - correctMessage
-    incorrectMessage db "Incorrect!"
+    incorrectMessage db "Incorrect! The answer was actually:  ", 10, 0
     incorrectMessage_len equ $ - incorrectMessage
+    incorrectMessageOffset equ incorrectMessage_len - 3
 
 section .bss
     intNumber resb 1
@@ -18,11 +19,22 @@ section .text
 
 _start:
 random:
-    ; generate pseudo-random number
+    ; use TSC as seed
     rdtsc ; read TSC into EDX:EAX
 
+    ; xorshift
+    mov edx, eax
+    shl eax, 13
+    xor eax, edx
+    mov edx, eax
+    shr eax, 17
+    xor eax, edx
+    mov edx, eax
+    shl eax, 5
+    xor eax, edx
+
     and eax, 0x0F ; keep lower 4 bits to get number in range 0-15
-    cmp al, 10 ; check if number is in range 10-15
+    cmp al, 10
     jge random ; if num >=10, try again
 
     ; store integer value
@@ -51,6 +63,7 @@ random:
 
     ; compare input with random number
     mov al, [input]
+    sub al, "0" ; convert input from ASCII to int
     cmp al, [intNumber]
     je correct
     jmp incorrect
@@ -62,9 +75,12 @@ correct:
     mov ecx, correctMessage
     mov edx, correctMessage_len
     int 0x80 ; make syscall
+    jmp exit
 
 incorrect:
     ; tell user they got it wrong :(
+    mov al, [strNumber]
+    mov byte [incorrectMessage + incorrectMessageOffset], al
     mov eax, 4 ; sys_write
     mov ebx, 1 ; stdout
     mov ecx, incorrectMessage
